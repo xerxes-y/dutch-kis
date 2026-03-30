@@ -12,7 +12,10 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:generate": "prisma generate",
+    "worker": "tsx src/worker/index.ts",
     "clean": "rm -rf .next dist"
   }
 }

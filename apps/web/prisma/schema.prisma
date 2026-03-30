@@ -1,0 +1,386 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector", schema: "public")]
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  image         String?
+  passwordHash  String?
+
+  nativeLanguage   String?
+  learningGoal     String?
+  cefrLevel        String  @default("A1")
+  correctionStyle  String  @default("guided")
+  dailyTimeBudget  Int     @default(30)
+  dailyExposure    String?
+  targetExam       String?
+  onboardingDone   Boolean @default(false)
+
+  accounts          Account[]
+  authSessions      AuthSession[]
+  weaknessMap       WeaknessMap?
+  weaknessSnapshots WeaknessMapSnapshot[]
+  sessionContinuity SessionContinuity?
+  vocabulary        Vocabulary[]
+  mistakes          Mistake[]
+  learningSessions  LearningSession[]
+  stories           Story[]
+  documents         Document[]
+  streak            Streak?
+  achievements      Achievement[]
+  audioRecordings   AudioRecording[]
+  sessionMemories   SessionMemory[]
+  answerEvents      AnswerEvent[]
+  patternAlerts     PatternAlert[]
+  promptVariants    PromptVariant[]
+  contentOutcomes   ContentOutcome[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model AuthSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Weakness Map ─────────────────────────────────────────────────────────────
+
+model WeaknessMap {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scores         Json
+  baselineScores Json
+}
+
+model WeaknessMapSnapshot {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId   String?         @unique
+  session     LearningSession? @relation(fields: [sessionId], references: [id])
+  scores      Json
+
+  @@index([userId, createdAt])
+}
+
+model SessionContinuity {
+  id          String   @id @default(cuid())
+  updatedAt   DateTime @updatedAt
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastMode    String
+  lastContext Json
+  canResume   Boolean  @default(false)
+}
+
+// ─── Learning Sessions ────────────────────────────────────────────────────────
+
+model LearningSession {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode        String
+  transcript  Json?
+  durationMs  Int?
+  scoreDeltas Json?
+  completed   Boolean  @default(false)
+
+  mistakes      Mistake[]
+  answerEvents  AnswerEvent[]
+  patternAlerts PatternAlert[]
+  snapshot      WeaknessMapSnapshot?
+  memory        SessionMemory?
+}
+
+// ─── Vocabulary & SRS ─────────────────────────────────────────────────────────
+
+model Vocabulary {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  word         String
+  lemma        String
+  translation  String?
+  gender       String?
+  cefrLevel    String   @default("A1")
+  domain       String?
+  pos          String?
+
+  fsrsDue           DateTime @default(now())
+  fsrsStability     Float    @default(0)
+  fsrsDifficulty    Float    @default(0)
+  fsrsElapsedDays   Int      @default(0)
+  fsrsScheduledDays Int      @default(0)
+  fsrsReps          Int      @default(0)
+  fsrsLapses        Int      @default(0)
+  fsrsState         Int      @default(0)
+
+  embedding       Unsupported("vector(768)")?
+  audioRecordings AudioRecording[]
+  nodeId          String?
+  node            VocabularyNode? @relation(fields: [nodeId], references: [id])
+
+  @@index([userId, fsrsDue])
+  @@unique([userId, lemma])
+}
+
+// ─── Mistakes ─────────────────────────────────────────────────────────────────
+
+model Mistake {
+  id             String          @id @default(cuid())
+  createdAt      DateTime        @default(now())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId      String
+  session        LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  subAxis        String
+  category       String
+  rootCause      String
+  original       String
+  correction     String
+  explanation    String?
+  responseTimeMs Int?
+  resolved       Boolean         @default(false)
+
+  @@index([userId, subAxis])
+}
+
+// ─── Pattern Alerts ───────────────────────────────────────────────────────────
+
+model PatternAlert {
+  id          String          @id @default(cuid())
+  createdAt   DateTime        @default(now())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId   String
+  session     LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  subAxis     String
+  count       Int
+  miniLesson  Json
+  resolved    Boolean         @default(false)
+}
+
+// ─── Stories ──────────────────────────────────────────────────────────────────
+
+model Story {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  content      String
+  cefrLevel    String
+  knownPercent Float
+  seedWords    String[]
+  domain       String?
+}
+
+// ─── Documents (RAG) ──────────────────────────────────────────────────────────
+
+model Document {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename     String
+  mimeType     String
+  minioKey     String
+  sizeBytes    Int?
+  status       String   @default("pending")
+  errorMessage String?
+  wordCount    Int?
+  chunkCount   Int      @default(0)
+  chunks       DocumentChunk[]
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String
+  position   Int
+  embedding  Unsupported("vector(768)")?
+
+  @@index([documentId, position])
+}
+
+// ─── Gamification ─────────────────────────────────────────────────────────────
+
+model Streak {
+  id             String    @id @default(cuid())
+  updatedAt      DateTime  @updatedAt
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime?
+  totalXp        Int       @default(0)
+}
+
+model Achievement {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeType String
+  label     String
+
+  @@unique([userId, badgeType])
+}
+
+// ─── Audio Recordings ─────────────────────────────────────────────────────────
+
+model AudioRecording {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vocabularyId String
+  vocabulary   Vocabulary @relation(fields: [vocabularyId], references: [id], onDelete: Cascade)
+  minioKey     String
+  score        Float?
+}
+
+// ─── Session Memory ───────────────────────────────────────────────────────────
+
+model SessionMemory {
+  id        String          @id @default(cuid())
+  createdAt DateTime        @default(now())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String          @unique
+  session   LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  summary   String
+  embedding Unsupported("vector(768)")?
+
+  @@index([userId])
+}
+
+// ─── Answer Events ────────────────────────────────────────────────────────────
+
+model AnswerEvent {
+  id              String          @id @default(cuid())
+  createdAt       DateTime        @default(now())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId       String
+  session         LearningSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseType    String
+  subAxis         String
+  correct         Boolean
+  responseTimeMs  Int
+  confidenceLevel String?
+  rootCause       String?
+
+  @@index([userId, createdAt])
+}
+
+// ─── Knowledge Graph ──────────────────────────────────────────────────────────
+
+model VocabularyNode {
+  id         String           @id @default(cuid())
+  lemma      String           @unique
+  familyId   String?
+  vocabulary Vocabulary[]
+  edgesFrom  VocabularyEdge[] @relation("fromNode")
+  edgesTo    VocabularyEdge[] @relation("toNode")
+}
+
+model VocabularyEdge {
+  id               String         @id @default(cuid())
+  fromId           String
+  toId             String
+  relationshipType String
+  from             VocabularyNode @relation("fromNode", fields: [fromId], references: [id], onDelete: Cascade)
+  to               VocabularyNode @relation("toNode", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId, relationshipType])
+}
+
+model GrammarDependency {
+  id           String  @id @default(cuid())
+  prerequisite String
+  dependent    String
+  description  String?
+
+  @@unique([prerequisite, dependent])
+}
+
+// ─── Self-Improving Loop ──────────────────────────────────────────────────────
+
+model ContentOutcome {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentType          String
+  subAxis              String?
+  difficulty           String
+  firstAttemptAccuracy Float?
+  avgResponseTimeMs    Float?
+  calibration          String?
+}
+
+model PromptVariant {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantType    String
+  subAxis        String
+  exposureCount  Int      @default(0)
+  retentionScore Float?
+}
