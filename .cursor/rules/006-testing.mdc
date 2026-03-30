@@ -1,0 +1,48 @@
+---
+description: Testing conventions — Vitest for unit tests, Playwright for E2E
+globs: **/*.test.ts,**/*.spec.ts,**/e2e/**
+alwaysApply: false
+---
+
+# Testing Conventions
+
+## Unit tests (Vitest) — test files colocated with source
+
+```ts
+// apps/web/src/lib/bkt.test.ts
+import { describe, it, expect } from 'vitest'
+import { updateSubAxis, getKnowledgeProbability } from './bkt'
+
+describe('BKT', () => {
+  it('increases knowledge probability on correct answer', async () => {
+    const before = await getKnowledgeProbability(userId, 'grammar.deHet')
+    await updateSubAxis(userId, 'grammar.deHet', { correct: true, responseTimeMs: 1200 })
+    const after = await getKnowledgeProbability(userId, 'grammar.deHet')
+    expect(after).toBeGreaterThan(before)
+  })
+})
+```
+
+## What to unit test
+- `lib/bkt.ts` — BKT update math
+- `lib/fsrs.ts` — FSRS scheduling intervals
+- `lib/story-calibration.ts` — i+1 vocabulary % calculation
+- `lib/engagement.ts` — frustration/boredom thresholds
+- All Zod schemas
+
+## E2E tests (Playwright) — in `apps/web/e2e/`
+
+```ts
+// apps/web/e2e/auth.spec.ts
+test('user can sign up and reach dashboard', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Get started' }).click()
+  // ...
+})
+```
+
+## E2E critical paths to always cover
+1. Auth flow (signup, login, password reset)
+2. Document upload (upload → processing → ready)
+3. Free-Write (write → AI analysis → weakness map updated)
+4. SRS review session (review → FSRS reschedule)

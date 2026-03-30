@@ -1,0 +1,40 @@
+---
+description: SpaCy Dutch NLP service conventions — endpoints and response shapes
+globs: services/nlp/**
+alwaysApply: false
+---
+
+# NLP Service (Python / SpaCy)
+
+## Available endpoints
+
+| Endpoint | Input | Returns |
+|---|---|---|
+| `POST /analyze` | `{ text: string }` | tokens with POS, lemma, dep, morph |
+| `POST /check-dehet` | `{ nouns: string[] }` | `{ word, prediction, confidence }[]` |
+| `POST /lemmatize` | `{ words: string[] }` | `{ word, lemma, pos }[]` |
+| `GET /health` | — | `{ status: "ok" }` |
+
+## Calling from Next.js (use the lib wrapper, not fetch directly)
+
+```ts
+import { nlp } from '@/lib/nlp'
+
+const analysis = await nlp.analyze('Ik bel je morgen op')
+// analysis.tokens[].pos — VERB, NOUN, ADP, etc.
+// analysis.tokens[].dep — nsubj, obj, advmod, etc.
+// analysis.tokens[].lemma — base form
+```
+
+## Adding a new endpoint to the service
+
+1. Add Pydantic model for request/response in `services/nlp/main.py`
+2. Add the route function
+3. Add the corresponding method to `apps/web/src/lib/nlp.ts`
+4. Update `services/nlp/Dockerfile` only if new packages are needed
+
+## Dutch POS tags to know
+
+`NOUN` `VERB` `AUX` `ADJ` `ADV` `ADP` `CCONJ` `SCONJ` `DET` `PRON` `PROPN`
+
+Separable verb detection: look for `VERB + PART` dependency pair.

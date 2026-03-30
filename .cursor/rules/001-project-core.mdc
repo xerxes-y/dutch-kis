@@ -1,0 +1,41 @@
+---
+description: Core project principles for Dutch KIS — read before any change
+alwaysApply: true
+---
+
+# Dutch KIS — Core Rules
+
+## The one rule above all others
+Every learning feature MUST call `updateWeaknessMap()` at session end.
+A feature that doesn't update the weakness map is incomplete.
+
+## Business logic location
+- Pure logic → `apps/web/src/lib/` (no Next.js imports)
+- API handlers → thin, validate input with Zod, delegate to `lib/`
+- React components → UI only, no business logic
+- Shared across web + mobile → `packages/` not `apps/`
+
+## Weakness map scoring
+Never use raw arithmetic (+3/-2). Always use BKT:
+```ts
+import { updateSubAxis } from '@/lib/bkt'
+await updateSubAxis(userId, 'grammar.separableVerbs', { correct: true, responseTimeMs })
+```
+
+## AI calls
+All Ollama calls must stream. Never await a full response in an API route:
+```ts
+import { streamChat } from '@/lib/ollama'
+// ✅ stream to client
+// ❌ const response = await ollama.complete(...)
+```
+
+## Error handling
+```ts
+// ✅
+import { AppError } from '@/lib/errors'
+throw new AppError('WEAKNESS_MAP_UPDATE_FAILED', { cause: err })
+
+// ❌
+throw new Error('something went wrong')
+```

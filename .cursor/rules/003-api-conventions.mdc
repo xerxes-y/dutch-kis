@@ -1,0 +1,51 @@
+---
+description: API route conventions — Zod validation, auth, response shape
+globs: apps/web/src/app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Conventions
+
+## Standard route structure
+
+```ts
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+const BodySchema = z.object({
+  text: z.string().min(1).max(5000),
+})
+
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 })
+
+  const body = BodySchema.safeParse(await req.json())
+  if (!body.success) return NextResponse.json({ error: 'INVALID_INPUT', issues: body.error.issues }, { status: 400 })
+
+  // delegate to lib/
+  const result = await doTheThing(session.user.id, body.data)
+  return NextResponse.json(result)
+}
+```
+
+## Streaming AI responses
+
+```ts
+export async function POST(req: NextRequest) {
+  const stream = new ReadableStream({ ... })
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+  })
+}
+```
+
+## Heavy work → BullMQ queue (never block API routes >500ms)
+
+```ts
+import { documentQueue } from '@/lib/queue'
+await documentQueue.add('process-document', { documentId, userId })
+return NextResponse.json({ status: 'queued' })
+```

@@ -1,0 +1,47 @@
+---
+description: Prisma schema conventions and migration workflow
+globs: apps/web/prisma/**
+alwaysApply: false
+---
+
+# Prisma Conventions
+
+## Schema location
+`apps/web/prisma/schema.prisma`
+
+## Required fields on every model
+```prisma
+model Example {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+## pgvector embedding fields
+```prisma
+// For any model storing embeddings:
+embedding Unsupported("vector(768)")?  // nomic-embed-text = 768 dimensions
+
+@@index([embedding], type: Hnsw(m: 16, efConstruction: 64))
+```
+
+## Migration workflow
+```bash
+# After schema changes:
+pnpm --filter web prisma migrate dev --name descriptive-name
+pnpm --filter web prisma generate
+```
+
+## Never use `prisma.findMany` without pagination in API routes
+```ts
+// ✅
+await prisma.vocabulary.findMany({ take: 50, skip: offset, where: { userId } })
+// ❌
+await prisma.vocabulary.findMany({ where: { userId } })
+```
+
+## WeaknessMap scores are JSON — always validate shape before write
+Import `WeaknessMapSchema` from `@dutch-kis/types` before updating.

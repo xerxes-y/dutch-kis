@@ -1,0 +1,48 @@
+---
+description: Weakness map sub-axes, BKT scoring, and snapshot rules
+alwaysApply: true
+---
+
+# Weakness Map
+
+## Valid sub-axes (exact keys used in DB and BKT)
+
+```
+vocabulary.work | vocabulary.family | vocabulary.travel | vocabulary.academic | vocabulary.daily
+grammar.deHet | grammar.separableVerbs | grammar.v2WordOrder | grammar.subordinateClauses | grammar.verbConjugation | grammar.tenseUsage
+pronunciation.gSchSounds | pronunciation.uiIjDiphthongs | pronunciation.longVowels | pronunciation.wordStress
+listening
+writing.formalRegister | writing.informalRegister | writing.emailStructure
+register.formalU | register.informalJij | register.idioms
+```
+
+## BKT update (always use this, never raw scores)
+
+```ts
+import { updateSubAxis } from '@/lib/bkt'
+
+// After a user answer:
+await updateSubAxis(userId, 'grammar.separableVerbs', {
+  correct: boolean,
+  responseTimeMs: number,         // used for careless detection
+  confidenceLevel: 'sure' | 'unsure' | 'guessing',  // optional
+})
+```
+
+## Snapshot — save history after every session
+
+```ts
+import { saveWeaknessSnapshot } from '@/lib/weakness-map'
+await saveWeaknessSnapshot(userId, sessionId)   // called at session end
+```
+
+## Mistake root causes (tag every mistake)
+
+`INTERFERENCE` | `UNKNOWN` | `CONFUSION` | `CARELESS`
+
+```ts
+import { recordMistake } from '@/lib/mistakes'
+await recordMistake({ userId, sessionId, subAxis, rootCause, responseTimeMs })
+```
+
+## Pattern alert threshold: 3 same-category mistakes in one session
