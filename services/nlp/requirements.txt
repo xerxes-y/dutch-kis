@@ -1,0 +1,7 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+spacy==3.7.4
+# Dutch model — downloaded at build time via Dockerfile
+# nl_core_news_sm is the small Dutch model (~14MB)
+# nl_core_news_lg is the large model (better accuracy, ~580MB)
+pydantic==2.7.1
