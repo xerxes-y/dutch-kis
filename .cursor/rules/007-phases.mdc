@@ -1,0 +1,22 @@
+---
+description: Phase ownership map — which agent builds which files. Read before making any changes.
+alwaysApply: true
+---
+
+# Phase Ownership
+
+| Phase | Files owned |
+|---|---|
+| 1 Foundation | `prisma/`, `lib/prisma.ts`, `lib/auth.ts`, `lib/errors.ts`, `lib/ollama.ts`, `lib/nlp.ts`, `lib/queue.ts`, `lib/storage.ts`, `app/api/auth/`, `app/(auth)/`, `middleware.ts` |
+| 2 Weakness Map | `lib/weakness-map.ts`, `lib/bkt.ts`, `lib/smart-start.ts`, `lib/session-memory.ts`, `components/weakness-map/`, `app/(dashboard)/`, `app/(modes)/freewrite/`, `app/api/weakness/`, `app/api/sessions/`, `app/api/ai/freewrite/` |
+| 3 Modes I | `app/(modes)/roleplay/`, `app/(modes)/dehet/`, `app/(modes)/separable/`, `app/(modes)/wordorder/`, `app/api/ai/roleplay/`, `app/api/ai/dehet/` |
+| 4 Modes II | `app/(modes)/phonetic/`, `app/(modes)/story/`, `app/(modes)/srs/`, `lib/fsrs.ts`, `app/api/ai/story/`, `app/api/vocabulary/` |
+| 5 Intelligence | `app/(modes)/documents/`, `app/api/documents/`, `worker/`, `lib/engagement.ts`, `lib/coaching.ts`, `app/api/ai/coaching/` |
+| 6 Polish | `app/(dashboard)/` (updates), `components/` (updates), `e2e/`, `*.test.ts`, `vitest.config.ts` |
+
+## Rules for every agent
+
+1. Only modify files in your phase column
+2. READ files from previous phases — don't recreate them
+3. If you need to extend a previous phase's file, add only what's needed — no rewrites
+4. Commit at the end of your phase with: `feat(phase-N): description`
